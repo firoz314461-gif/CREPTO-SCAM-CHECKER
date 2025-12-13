@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Address Safety Checker | Verify Bitcoin Address</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --safe-color: #10b981;
+            --low-color: #f59e0b;
+            --medium-color: #f97316;
+            --high-color: #ef4444;
+            --critical-color: #7c2d12;
+        }
+        .risk-low { background-color: var(--safe-color); color: white; }
+        .risk-medium { background-color: var(--low-color); color: white; }
+        .risk-high { background-color: var(--medium-color); color: white; }
+        .risk-critical { background-color: var(--critical-color); color: white; }
+        .address-box {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            word-break: break-all;
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold">
+                <i class="fas fa-shield-alt text-primary"></i> Crypto Address Safety Checker
+            </h1>
+            <p class="lead text-muted">
+                Check any Bitcoin address for scams, hacks, or suspicious activity
+            </p>
+            <div class="alert alert-info d-inline-block">
+                <i class="fas fa-database"></i> Database: <span id="dbCount">Loading...</span> known scam addresses
+            </div>
+        </div>
+
+        <!-- Main Input Card -->
+        <div class="card shadow-lg border-0 mb-5">
+            <div class="card-body p-5">
+                <h3 class="card-title mb-4">
+                    <i class="fas fa-search"></i> Enter Cryptocurrency Address
+                </h3>
+                
+                <div class="mb-4">
+                    <div class="input-group input-group-lg">
+                        <input type="text" class="form-control form-control-lg" 
+                               id="cryptoAddress" 
+                               placeholder="e.g., 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa">
+                        <button class="btn btn-primary btn-lg" type="button" id="checkBtn">
+                            <i class="fas fa-shield-alt"></i> Check Safety
+                        </button>
+                    </div>
+                    <div class="form-text mt-2">
+                        Supports Bitcoin, Ethereum, and other major cryptocurrencies
+                    </div>
+                </div>
+
+                <!-- Quick Examples -->
+                <div class="mb-3">
+                    <small class="text-muted">Try these test addresses:</small>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary me-2 mb-2 example-btn" 
+                                data-address="1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF">
+                            <i class="fas fa-bug"></i> Known Hack Address
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-2 mb-2 example-btn" 
+                                data-address="1MDUoxL1bGvMxhuoDYx6i11ePytECAk9QK">
+                            <i class="fas fa-fish"></i> Phishing Scam
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary mb-2 example-btn" 
+                                data-address="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa">
+                            <i class="fas fa-check-circle"></i> Satoshi's Address (Safe)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section (Initially Hidden) -->
+        <div id="resultsSection" class="d-none">
+            <!-- Risk Level Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center p-4">
+                    <h4 class="mb-3">Safety Analysis</h4>
+                    <div id="riskIndicator" class="display-1 mb-3">
+                        <i class="fas fa-question-circle"></i>
+                    </div>
+                    <h2 id="riskLevel" class="fw-bold">Checking...</h2>
+                    <div class="progress mb-3" style="height: 20px;">
+                        <div id="riskBar" class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div id="riskScore" class="h5">Score: 0/100</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Left Column: Warnings & Details -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-warning text-dark">
+                            <i class="fas fa-exclamation-triangle"></i> Warnings & Issues
+                        </div>
+                        <div class="card-body">
+                            <ul id="warningsList" class="list-group list-group-flush">
+                                <!-- Warnings will appear here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Address Details -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-primary text-white">
+                            <i class="fas fa-info-circle"></i> Address Information
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>Address:</strong>
+                                <div class="address-box mt-1" id="resultAddress"></div>
+                            </div>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><i class="fas fa-exchange-alt"></i> Transactions:</td>
+                                    <td id="txCount">-</td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-wallet"></i> Balance:</td>
+                                    <td id="balance">-</td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-calendar"></i> First Seen:</td>
+                                    <td id="firstSeen">-</td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-database"></i> Data Source:</td>
+                                    <td id="dataSource">-</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scam Database Match -->
+            <div class="card mb-4" id="scamMatchCard" style="display: none;">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-skull-crossbones"></i> Scam Database Match Found!
+                </div>
+                <div class="card-body">
+                    <div id="scamDetails"></div>
+                </div>
+            </div>
+
+            <!-- Suggestions -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-lightbulb"></i> Recommendations
+                </div>
+                <div class="card-body">
+                    <ul id="suggestionsList" class="mb-0">
+                        <!-- Suggestions will appear here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-5 pt-4 border-top">
+            <p class="text-muted">
+                <i class="fas fa-exclamation-circle"></i> Disclaimer: This tool provides risk analysis based on public data. 
+                Always verify through multiple sources before making transactions.
+            </p>
+            <p>
+                <a href="/api/stats" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-chart-bar"></i> API Status
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // DOM Elements
+        const checkBtn = document.getElementById('checkBtn');
+        const cryptoAddress = document.getElementById('cryptoAddress');
+        const resultsSection = document.getElementById('resultsSection');
+        const dbCount = document.getElementById('dbCount');
+        
+        // Example buttons
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                cryptoAddress.value = this.getAttribute('data-address');
+                checkAddress();
+            });
+        });
+        
+        // Load database stats
+        fetch('/api/stats')
+            .then(res => res.json())
+            .then(data => {
+                dbCount.textContent = data.scam_database_size;
+            });
+        
+        // Check address function
+        async function checkAddress() {
+            const address = cryptoAddress.value.trim();
+            
+            if (!address || address.length < 26) {
+                alert('Please enter a valid cryptocurrency address (minimum 26 characters)');
+                return;
+            }
+            
+            // Show loading state
+            checkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+            checkBtn.disabled = true;
+            
+            // Show results section
+            resultsSection.classList.remove('d-none');
+            
+            // Reset results
+            document.getElementById('riskLevel').textContent = 'Checking...';
+            document.getElementById('riskScore').textContent = 'Score: 0/100';
+            document.getElementById('riskBar').style.width = '0%';
+            document.getElementById('scamMatchCard').style.display = 'none';
+            
+            try {
+                // Call API
+                const formData = new FormData();
+                formData.append('address', address);
+                
+                const response = await fetch('/api/check', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (!result.valid) {
+                    alert('Invalid address format');
+                    return;
+                }
+                
+                // Update UI with results
+                updateResults(result);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error checking address. Please try again.');
+            } finally {
+                // Reset button
+                checkBtn.innerHTML = '<i class="fas fa-shield-alt"></i> Check Safety';
+                checkBtn.disabled = false;
+            }
+        }
+        
+        // Update UI with results
+        function updateResults(data) {
+            // Address
+            document.getElementById('resultAddress').textContent = data.address;
+            
+            // Risk Analysis
+            const risk = data.risk_analysis;
+            document.getElementById('riskLevel').textContent = risk.risk_level;
+            document.getElementById('riskLevel').className = `fw-bold risk-${risk.risk_level.toLowerCase()}`;
+            document.getElementById('riskScore').textContent = `Score: ${risk.score}/100`;
+            document.getElementById('riskBar').style.width = `${risk.score}%`;
+            document.getElementById('riskBar').className = `progress-bar risk-${risk.risk_level.toLowerCase()}`;
+            
+            // Risk Icon
+            const riskIcon = document.getElementById('riskIndicator');
+            if (risk.risk_level === 'LOW') {
+                riskIcon.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+            } else if (risk.risk_level === 'MEDIUM') {
+                riskIcon.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i>';
+            } else if (risk.risk_level === 'HIGH') {
+                riskIcon.innerHTML = '<i class="fas fa-exclamation-circle text-danger"></i>';
+            } else {
+                riskIcon.innerHTML = '<i class="fas fa-skull-crossbones text-dark"></i>';
+            }
+            
+            // Warnings
+            const warningsList = document.getElementById('warningsList');
+            warningsList.innerHTML = '';
+            
+            if (risk.warnings.length > 0) {
+                risk.warnings.forEach(warning => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.innerHTML = warning;
+                    warningsList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.className = 'list-group-item text-success';
+                li.innerHTML = '<i class="fas fa-check"></i> No warnings detected';
+                warningsList.appendChild(li);
+            }
+            
+            // Blockchain Data
+            const blockchain = data.blockchain_data;
+            if (blockchain) {
+                document.getElementById('txCount').textContent = blockchain.transaction_count.toLocaleString();
+                document.getElementById('balance').textContent = (blockchain.balance / 100000000).toFixed(8) + ' BTC';
+                document.getElementById('firstSeen').textContent = blockchain.first_seen || 'Unknown';
+                document.getElementById('dataSource').textContent = blockchain.source;
+            }
+            
+            // Scam Match
+            if (data.scam_check.found) {
+                document.getElementById('scamMatchCard').style.display = 'block';
+                const scamDetails = document.getElementById('scamDetails');
+                scamDetails.innerHTML = `
+                    <h5>${data.scam_check.details.tag}</h5>
+                    <p><strong>Type:</strong> ${data.scam_check.details.type}</p>
+                    <p><strong>Details:</strong> ${data.scam_check.details.amount_lost || data.scam_check.details.description || 'No additional details'}</p>
+                    <p class="text-danger"><i class="fas fa-ban"></i> <strong>DO NOT SEND FUNDS TO THIS ADDRESS</strong></p>
+                `;
+            }
+            
+            // Suggestions
+            const suggestionsList = document.getElementById('suggestionsList');
+            suggestionsList.innerHTML = '';
+            risk.suggestions.forEach(suggestion => {
+                const li = document.createElement('li');
+                li.className = 'mb-2';
+                li.innerHTML = `<i class="fas fa-chevron-right text-success"></i> ${suggestion}`;
+                suggestionsList.appendChild(li);
+            });
+            
+            // Scroll to results
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Event Listeners
+        checkBtn.addEventListener('click', checkAddress);
+        cryptoAddress.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkAddress();
+            }
+        });
+        
+        // Auto-focus input
+        cryptoAddress.focus();
+    </script>
+</body>
+</html>
